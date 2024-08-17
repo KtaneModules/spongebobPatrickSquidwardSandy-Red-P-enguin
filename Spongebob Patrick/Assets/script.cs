@@ -60,13 +60,13 @@ public class script : MonoBehaviour {
     string[] directionNames = new string[4] { "Up", "Right", "Down", "Left" };
 
     // Use this for initialization
-    void Start () {
+    void Start() {
         //button generation
         string logCharacters = "";
-        List<int> availableIndexes = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-        for(int i = 0; i < 4; i++)
+        List<int> availableIndexes = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+        for (int i = 0; i < 4; i++)
         {
-            chosenCharacters[i] = availableIndexes[Random.Range(0,availableIndexes.Count)];
+            chosenCharacters[i] = availableIndexes[Random.Range(0, availableIndexes.Count)];
             pooledCharacters[i] = chosenCharacters[i];
             availableIndexes.Remove(chosenCharacters[i]);
             buttonLabels[i].material = characterMaterials[chosenCharacters[i]];
@@ -82,7 +82,7 @@ public class script : MonoBehaviour {
         for (int i = 0; i < 3; i++)
         {
             Vector2Int firstCharacterPosition = positionInBigTable(chosenCharacters[i], i);
-            for(int j = i + 1; j < 4; j++)
+            for (int j = i + 1; j < 4; j++)
             {
                 Vector2Int secondCharacterPosition = positionInBigTable(chosenCharacters[j], j);
                 Vector2Int pooledCharacterPosition = Midpoint(firstCharacterPosition, secondCharacterPosition);
@@ -111,7 +111,7 @@ public class script : MonoBehaviour {
         { 0,0,0,0 }
         };
         int[] timesCharacterEncountered = new int[13];
-        for(int i = 0; i < 10; i++)
+        for (int i = 0; i < 10; i++)
         {
             int fromCharacter = pooledCharacters[i];
             int toCharacter = pooledCharacters[(i + 1) % 10];
@@ -125,7 +125,7 @@ public class script : MonoBehaviour {
                 Debug.LogFormat("[Spongebob Patrick Squidward Sandy #{0}] Traveling from {1} to {2} made no change to the maze.", ModuleId, characterUneditedNames[fromCharacter], characterUneditedNames[toCharacter]);
                 continue;
             }
-            if(positionOffset.x == 0 || positionOffset.y == 0) //slope is horizontal or vertical
+            if (positionOffset.x == 0 || positionOffset.y == 0) //slope is horizontal or vertical
             {
                 char arrow = positionOffset.x == 0 ? (positionOffset.y > 0 ? 'v' : '^') : (positionOffset.x > 0 ? '>' : '<');
                 int numberOfPoints = Mathf.Max(Mathf.Abs(positionOffset.x), Mathf.Abs(positionOffset.y)); //how many points need to be changed
@@ -158,7 +158,7 @@ public class script : MonoBehaviour {
                 {
                     Vector2 modifyPoint = Vector2.Lerp(fromCharacterPosition, toCharacterPosition, (float)j / (float)numberOfPoints);
                     //print(modifyPoint.x + " : " + modifyPoint.y);
-                    if(xOffsetIsOne)
+                    if (xOffsetIsOne)
                         mazeArrows[fromCharacterPosition.x, Mathf.RoundToInt(modifyPoint.y)] = arrow;
                     else
                         mazeArrows[Mathf.RoundToInt(modifyPoint.x), fromCharacterPosition.y] = arrow;
@@ -189,7 +189,7 @@ public class script : MonoBehaviour {
             }
 
             Debug.LogFormat("[Spongebob Patrick Squidward Sandy #{0}] Traveling from {1} to {2} changed the state of the maze to:", ModuleId, characterUneditedNames[fromCharacter], characterUneditedNames[toCharacter]);
-            for(int j = 0; j < 4; j++)
+            for (int j = 0; j < 4; j++)
             {
                 Debug.LogFormat("[Spongebob Patrick Squidward Sandy #{0}] {1} {2} {3} {4}", ModuleId, mazeArrows[0, j], mazeArrows[1, j], mazeArrows[2, j], mazeArrows[3, j]);
             }
@@ -240,6 +240,7 @@ public class script : MonoBehaviour {
 
         //finding maze areas and merging together if able
         int nextAreaIndex = 1;
+        List<int> amountOfCellsInArea = new List<int>{ 0 };
         for(int i = 0; i < 4; i++)
         {
             for(int j = 0; j < 4; j++)
@@ -282,21 +283,28 @@ public class script : MonoBehaviour {
                             for (int j2 = 0; j2 < 4; j2++)
                             {
                                 if (mazeAreas[i2, j2] == otherSpaceIndex)
+                                {
                                     mazeAreas[i2, j2] = spaceIndex;
+                                    amountOfCellsInArea[spaceIndex]++;
+                                    amountOfCellsInArea[otherSpaceIndex]--;
+                                }
                             }
                         }
                         continue;
                     }
                     mazeAreas[i, j] = otherSpaceIndex;
+                    amountOfCellsInArea[otherSpaceIndex]++;
                     continue;
                 }
                 if (spaceHasIndex)
                 {
                     mazeAreas[i + xOffset, j + yOffset] = spaceIndex;
+                    amountOfCellsInArea[spaceIndex]++;
                     continue;
                 }
                 mazeAreas[i, j] = nextAreaIndex++;
                 mazeAreas[i + xOffset, j + yOffset] = mazeAreas[i, j];
+                amountOfCellsInArea.Add(2);
                 continue;
             }
         }
@@ -350,7 +358,79 @@ public class script : MonoBehaviour {
                 }
             }
         }
-        DebugMsg("Resulting maze after merging areas:");
+        //pruning outside areas. theres probably a better way to do this but i didnt care enough to think of any
+        //college move in day is tomorrow and im up at 11:30 pm writing Spongebob Patrick Squidward Sandy code cut me some slack
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                int spaceIndex = mazeAreas[i, j];
+                if (spaceIndex == 0)
+                    continue;
+
+                int otherSpaceIndex = 0;
+                if(i > 0)
+                {
+                    otherSpaceIndex = mazeAreas[i - 1, j];
+                    if(spaceIndex != otherSpaceIndex && otherSpaceIndex != 0)
+                    {
+                        for (int i2 = 0; i2 < 4; i2++)
+                        {
+                            for (int j2 = 0; j2 < 4; j2++)
+                            {
+                                if (mazeAreas[i2, j2] == otherSpaceIndex)
+                                {
+                                    mazeAreas[i2, j2] = spaceIndex;
+                                    amountOfCellsInArea[spaceIndex]++;
+                                    amountOfCellsInArea[otherSpaceIndex]--;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (j > 0)
+                {
+                    otherSpaceIndex = mazeAreas[i, j - 1];
+                    if (spaceIndex != otherSpaceIndex && otherSpaceIndex != 0)
+                    {
+                        for (int i2 = 0; i2 < 4; i2++)
+                        {
+                            for (int j2 = 0; j2 < 4; j2++)
+                            {
+                                if (mazeAreas[i2, j2] == otherSpaceIndex)
+                                {
+                                    mazeAreas[i2, j2] = spaceIndex;
+                                    amountOfCellsInArea[spaceIndex]++;
+                                    amountOfCellsInArea[otherSpaceIndex]--;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        int largestMazeIndex = 1;
+        for(int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                int index = mazeAreas[i, j];
+                if (index == 0)
+                    continue;
+
+                if (index != largestMazeIndex && amountOfCellsInArea[index] > amountOfCellsInArea[largestMazeIndex])
+                    largestMazeIndex = index;
+            }
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                if (mazeAreas[i, j] != largestMazeIndex)
+                    maze[i, j] = ""; //we know that any index not a part of this is disconnected from every other index, so this is a safe thing to do
+            }
+        }
+        DebugMsg("Resulting maze after merging areas and pruning disconnected areas:");
         LogMaze();
 
         int fewestNeighbors = 5;
